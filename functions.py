@@ -44,9 +44,9 @@ def Optimal_Quadrature_Nodes_Optimizer(kernel: GPy.kern, number_of_nodes: int, i
                 K[j, i] = kernel_function(x[j], x[i])
         K_inv = np.linalg.pinv(K)
         temp = np.matmul(u_X, K_inv)
-        for i in range(0, n):
-            var = u_front_variance - np.matmul(temp, u_X)
-        return var
+        #for i in range(0, n):
+        vari = u_front_variance - np.matmul(temp, u_X)
+        return vari
 
     opt = sp.optimize.minimize(var, initialguess, method='Nelder-Mead')
     if (return_var == True):
@@ -76,8 +76,7 @@ def get_var(kernel: GPy.kern, X: np.ndarray):
                 K[j, i] = kernel_function(x[j], x[i])
         K_inv = np.linalg.pinv(K)
         temp = np.matmul(u_X, K_inv)
-        for i in range(0, n):
-            var = u_front_variance - np.matmul(temp, u_X)
+        var = u_front_variance - np.matmul(temp, u_X)
         return var
 
     return var(X)
