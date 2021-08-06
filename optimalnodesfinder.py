@@ -65,6 +65,3 @@ try:
 except IOError:
     print("File not accessible")
     np.savetxt('./Nodes/' + filename, X_optimal)
-
-#finally:
-    #print("test")
