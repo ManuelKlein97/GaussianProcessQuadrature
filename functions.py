@@ -54,3 +54,30 @@ def Optimal_Quadrature_Nodes_Optimizer(kernel: GPy.kern, number_of_nodes: int, i
         return opt.x, variance
     else:
         return opt.x
+
+def get_var(kernel: GPy.kern, X: np.ndarray):
+
+    if (kernel.__class__.__name__ == 'PolynomialBasis'):
+
+        def kernel_function(X, X2):
+            return 1 / (1 - kernel.weight * X * X2)
+
+        A = np.array([-1, 1])
+
+    def var(x: np.ndarray):
+        n = len(x)
+        u_X = np.zeros(n)
+        K = np.identity(n)
+        u_front_variance = sp.integrate.dblquad(kernel_function, A[0], A[1], A[0], A[1])[0]
+        for i in range(0, n):
+            u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], x[i])[0]
+            for j in range(0, n):
+                K[i, j] = kernel_function(x[i], x[j])
+                K[j, i] = kernel_function(x[j], x[i])
+        K_inv = np.linalg.pinv(K)
+        temp = np.matmul(u_X, K_inv)
+        for i in range(0, n):
+            var = u_front_variance - np.matmul(temp, u_X)
+        return var
+
+    return var(X)
