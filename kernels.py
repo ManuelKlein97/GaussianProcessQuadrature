@@ -42,7 +42,7 @@ class PolynomialBasisFinite(Kern):
 
     def K(self, X, X2):
         if X2 is None: X2 = X
-        n = 5
+        n = 8
         upper = (1-np.power((self.weight * X * X2.T), n + 1))
         lower = 1 - self.weight * X * X2.T
         return upper / lower
