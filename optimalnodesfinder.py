@@ -13,8 +13,8 @@ For kernels with one hyperparameter
 '''
 
 #Search interval of specified b-values
-b_low = 0.45
-b_high = 0.5
+b_low = 0.01
+b_high = 0.99
 h = 0.01
 
 if (b_low == h and b_high == 1-h):
@@ -28,10 +28,10 @@ else:
     index2 = int(b_high * (1/h) - 1)
     b = np.linspace(b_low, b_high, NoP)
 
-A = np.array([-1, 1])
+A = np.array([0, 1])
 h = 0.01
-NoN = 6
-NoT = 10
+NoN = 2
+NoT = 1
 guesses = np.random.uniform(low=A[0], high=A[1], size=(NoT, NoN))
 
 
@@ -43,8 +43,9 @@ X_nodes = np.ones((NoP, NoT, NoN))
 Running the tests
 '''
 for k in range(0, NoP):
-    kernel = kernels.PolynomialBasis(input_dim=1, weight=b[k])
+    #kernel = kernels.PolynomialBasis(input_dim=1, weight=b[k])
     #kernel = kernels.PolynomialBasisFinite(input_dim=1, weight=b[k])
+    kernel = kernels.Trigonometric(input_dim=1, weight=b[k])
     for i in range(0, NoT):
         X_nodes[k][i], variance[k][i] = functions.Optimal_Quadrature_Nodes_Optimizer(kernel=kernel, number_of_nodes=NoN, initialguess=guesses[i], return_var=True)
 
@@ -68,7 +69,9 @@ try:
     var_1 = np.zeros((len(file), 1))
     var_2 = np.zeros((len(file), 1))
     for i in range(0, NoP):
-        kernel = kernels.PolynomialBasis(input_dim=1, weight=b[i])
+        #kernel = kernels.PolynomialBasis(input_dim=1, weight=b[i])
+        #kernel = kernels.PolynomialBasisFinite(input_dim=1, weight=b[i])
+        kernel = kernels.Trigonometric(input_dim=1, weight=b[i])
         var_1[i] = functions.get_var(kernel, X_optimal[i])
         var_2[i] = functions.get_var(kernel, file[index1 + i])
         if (var_1[i] > var_2[i]):
