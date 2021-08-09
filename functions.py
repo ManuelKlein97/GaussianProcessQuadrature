@@ -108,6 +108,22 @@ def get_weights(kernel: GPy.kern, X: np.ndarray):
 
     return weights
 
+def integral_transformation(A: np.ndarray, B: np.ndarray, X: np.ndarray):
+    '''
+
+    :param A: First integration area (standard)
+    :param B: Target integration area
+    :param X: Points that are to be transformed
+    :return: Transformed points Y
+    '''
+
+    n = len(X)
+    Y = np.zeros(n)
+    for i in range(0, n):
+        Y[i] = (X[i] - A[0])/(A[1] - A[0]) * B[1] + (A[1] - X[i])/(A[1] - A[0]) * B[0]
+
+    return Y
+
 '''
 Main functions
 '''
@@ -184,3 +200,39 @@ def Optimal_Quadrature_Nodes_Extend(kernel: GPy.kern, NoN_ex: int, NoN_add: int,
         return opt.x, variance
     else:
         return opt.x
+
+def GPQ(f, kernel: GPy.kern, A: np.ndarray, NoN: int, return_var: bool):
+    '''
+
+    :param f: function to be integrated with GPQ
+    :param kernel: kernel that shall be used for quadrature
+    :param A: arbitrary integration area
+    :param NoN: number of nodes involved
+    :param return_var: Bool whether to return the variance of the predicted integral value
+    :return:
+    '''
+
+    kernel_function = get_kernel_function(kernel=kernel)
+    A_std = get_integration_area(kernel=kernel)
+    filename = kernel.__class__.__name__ + ', ' + '{}'.format(NoN) + ', ' + '{}'.format(0.01) + '.txt'
+    X_std = np.loadtxt(filename)
+    X = integral_transformation(A=A_std, B=A, X=X_std)
+
+    u_X = np.zeros(NoN)
+    K = np.zeros((NoN, NoN))
+    Y = f(X)
+
+    for i in range(0, NoN):
+        u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], X[i])[0]
+        for j in range(0, NoN):
+            K[i, j] = kernel_function(X[i], X[j])
+
+    K_inv = np.linalg.pinv(K)
+    temp1 = np.matmul(u_X, K_inv)
+    I = np.matmul(temp1, Y)
+    if (return_var == True):
+        u = sp.integrate.dblquad(kernel_function, A[0], A[1], A[0], A[1])[0]
+        var = u - np.matmul(temp1, u_X)
+        return I, var
+    else:
+        return I
