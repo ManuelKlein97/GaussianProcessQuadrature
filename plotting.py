@@ -10,7 +10,7 @@ Loading nodes
 
 kernel = kernels.Trigonometric(input_dim=1, weight=0.5)
 A = np.array([0, 1])
-for i in range(2, 8):
+for i in range(2, 3):
     NoN = i
     h = 0.01
     name = kernel.__class__.__name__

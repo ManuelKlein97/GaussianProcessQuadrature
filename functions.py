@@ -9,7 +9,7 @@ import scipy.stats as stats
 from scipy.optimize import Bounds
 
 '''
-get-functions for a more simple reading of complex functions underneath
+get-functions and help-functions for a simpler reading of complex main-functions underneath
 '''
 
 def get_kernel_function(kernel: GPy.kern):
@@ -89,11 +89,9 @@ def get_var(kernel: GPy.kern, X: np.ndarray):
 
     return var(X)
 
-def get_weights(kernel: GPy.kern, X: np.ndarray):
+def get_weights(kernel: GPy.kern, X: np.ndarray, A: np.ndarray):
 
     kernel_function = get_kernel_function(kernel=kernel)
-    A = get_integration_area(kernel=kernel)
-
     n = len(X)
     u_X = np.zeros(n)
     K = np.identity(n)
@@ -125,7 +123,7 @@ def integral_transformation(A: np.ndarray, B: np.ndarray, X: np.ndarray):
     return Y
 
 '''
-Main functions
+main-functions
 '''
 
 def Optimal_Quadrature_Nodes_Optimizer(kernel: GPy.kern, number_of_nodes: int, initialguess: np.ndarray, return_var: bool):
@@ -164,9 +162,9 @@ def Optimal_Quadrature_Nodes_Extend(kernel: GPy.kern, NoN_ex: int, NoN_add: int,
     :param NoN_add: Number of nodes wanted to be added
     :return:
     '''
-
+    index = int(100 * kernel.weight)
     filename = kernel.__class__.__name__ + ', ' + '{}'.format(NoN_ex) + ', ' + '{}'.format(0.01) + '.txt'
-    X = np.loadtxt(filename)
+    X = np.loadtxt('./Nodes/' + filename)[index]
     K = np.zeros((NoN_ex, NoN_ex))
     u_X = np.zeros(NoN_ex)
     kernel_function = get_kernel_function(kernel=kernel)
@@ -212,27 +210,23 @@ def GPQ(f, kernel: GPy.kern, A: np.ndarray, NoN: int, return_var: bool):
     :return:
     '''
 
+    index = int(100 * kernel.weight)
     kernel_function = get_kernel_function(kernel=kernel)
     A_std = get_integration_area(kernel=kernel)
     filename = kernel.__class__.__name__ + ', ' + '{}'.format(NoN) + ', ' + '{}'.format(0.01) + '.txt'
-    X_std = np.loadtxt(filename)
+    X_std = np.loadtxt('./Nodes/' + filename)[index]
     X = integral_transformation(A=A_std, B=A, X=X_std)
 
-    u_X = np.zeros(NoN)
-    K = np.zeros((NoN, NoN))
+    weights = get_weights(kernel=kernel, X=X, A=A)
     Y = f(X)
 
-    for i in range(0, NoN):
-        u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], X[i])[0]
-        for j in range(0, NoN):
-            K[i, j] = kernel_function(X[i], X[j])
-
-    K_inv = np.linalg.pinv(K)
-    temp1 = np.matmul(u_X, K_inv)
-    I = np.matmul(temp1, Y)
+    I = np.matmul(weights, Y)
     if (return_var == True):
+        u_X = np.zeros(NoN)
+        for i in range(0, NoN):
+            u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], X[i])[0]
         u = sp.integrate.dblquad(kernel_function, A[0], A[1], A[0], A[1])[0]
-        var = u - np.matmul(temp1, u_X)
+        var = u - np.matmul(weights, u_X)
         return I, var
     else:
         return I
