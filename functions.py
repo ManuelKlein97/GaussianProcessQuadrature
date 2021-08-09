@@ -8,20 +8,21 @@ import json
 import scipy.stats as stats
 from scipy.optimize import Bounds
 
-def Optimal_Quadrature_Nodes_Optimizer(kernel: GPy.kern, number_of_nodes: int, initialguess: np.ndarray, return_var: bool):
+'''
+get-functions for a more simple reading of complex functions underneath
+'''
+
+def get_kernel_function(kernel: GPy.kern):
 
     if (kernel.__class__.__name__ == 'PolynomialBasis'):
         def kernel_function(X, X2):
             return 1 / (1 - kernel.weight * X * X2)
-        A = np.array([-1, 1])
 
     if (kernel.__class__.__name__ == 'Trigonometric'):
         def kernel_function(X, X2):
             up = 0.5 * (1 - np.square(kernel.weight))
             down = 1 + np.square(kernel.weight) - 2 * kernel.weight * np.cos(2 * np.pi * (X - X2))
             return 0.5 + up / down
-
-        A = np.array([0, 1])
 
     if (kernel.__class__.__name__ == 'PolynomialBasisFinite'):
         def kernel_function(X, X2):
@@ -30,30 +31,19 @@ def Optimal_Quadrature_Nodes_Optimizer(kernel: GPy.kern, number_of_nodes: int, i
             lower = 1 - kernel.weight * X * X2
             return upper / lower
 
+    return kernel_function
+
+def get_integration_area(kernel: GPy.kern):
+    if (kernel.__class__.__name__ == 'PolynomialBasis'):
         A = np.array([-1, 1])
 
-    def var(x: np.ndarray):
-        n = len(x)
-        u_X = np.zeros(n)
-        K = np.identity(n)
-        u_front_variance = sp.integrate.dblquad(kernel_function, A[0], A[1], A[0], A[1])[0]
-        for i in range(0, n):
-            u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], x[i])[0]
-            for j in range(0, n):
-                K[i, j] = kernel_function(x[i], x[j])
-                K[j, i] = kernel_function(x[j], x[i])
-        K_inv = np.linalg.pinv(K)
-        temp = np.matmul(u_X, K_inv)
-        #for i in range(0, n):
-        vari = u_front_variance - np.matmul(temp, u_X)
-        return vari
+    if (kernel.__class__.__name__ == 'Trigonometric'):
+        A = np.array([0, 1])
 
-    opt = sp.optimize.minimize(var, initialguess, method='Nelder-Mead')
-    if (return_var == True):
-        variance = var(opt.x)
-        return opt.x, variance
-    else:
-        return opt.x
+    if (kernel.__class__.__name__ == 'PolynomialBasisFinite'):
+        A = np.array([-1, 1])
+
+    return A
 
 def get_var(kernel: GPy.kern, X: np.ndarray):
 
@@ -92,13 +82,62 @@ def get_var(kernel: GPy.kern, X: np.ndarray):
             u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], x[i])[0]
             for j in range(0, n):
                 K[i, j] = kernel_function(x[i], x[j])
-                K[j, i] = kernel_function(x[j], x[i])
         K_inv = np.linalg.pinv(K)
         temp = np.matmul(u_X, K_inv)
         var = u_front_variance - np.matmul(temp, u_X)
         return var
 
     return var(X)
+
+def get_weights(kernel: GPy.kern, X: np.ndarray):
+
+    kernel_function = get_kernel_function(kernel=kernel)
+    A = get_integration_area(kernel=kernel)
+
+    n = len(X)
+    u_X = np.zeros(n)
+    K = np.identity(n)
+
+    for i in range(0, n):
+        u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], X[i])[0]
+        for j in range(0, n):
+            K[i, j] = kernel_function(X[i], X[j])
+
+    K_inverse = np.linalg.pinv(K)
+    weights = np.matmul(K_inverse, u_X)
+
+    return weights
+
+'''
+Main functions
+'''
+
+def Optimal_Quadrature_Nodes_Optimizer(kernel: GPy.kern, number_of_nodes: int, initialguess: np.ndarray, return_var: bool):
+
+    kernel_function = get_kernel_function(kernel=kernel)
+    A = get_integration_area(kernel=kernel)
+
+    def var(x: np.ndarray):
+        n = len(x)
+        u_X = np.zeros(n)
+        K = np.identity(n)
+        u_front_variance = sp.integrate.dblquad(kernel_function, A[0], A[1], A[0], A[1])[0]
+        for i in range(0, n):
+            u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], x[i])[0]
+            for j in range(0, n):
+                K[i, j] = kernel_function(x[i], x[j])
+        K_inv = np.linalg.pinv(K)
+        temp = np.matmul(u_X, K_inv)
+        #for i in range(0, n):
+        vari = u_front_variance - np.matmul(temp, u_X)
+        return vari
+
+    opt = sp.optimize.minimize(var, initialguess, method='Nelder-Mead')
+    if (return_var == True):
+        variance = var(opt.x)
+        return opt.x, variance
+    else:
+        return opt.x
 
 def Optimal_Quadrature_Nodes_Extend(kernel: GPy.kern, NoN_ex: int, NoN_add: int, return_var: bool):
 
@@ -114,30 +153,8 @@ def Optimal_Quadrature_Nodes_Extend(kernel: GPy.kern, NoN_ex: int, NoN_add: int,
     X = np.loadtxt(filename)
     K = np.zeros((NoN_ex, NoN_ex))
     u_X = np.zeros(NoN_ex)
-
-
-    if (kernel.__class__.__name__ == 'PolynomialBasis'):
-        def kernel_function(X, X2):
-            return 1/(1 - kernel.weight * X * X2)
-
-        A = np.array([-1, 1])
-
-    if (kernel.__class__.__name__ == 'Trigonometric'):
-        def kernel_function(X, X2):
-            up = 0.5 * (1 - np.square(kernel.weight))
-            down = 1 + np.square(kernel.weight) - 2 * kernel.weight * np.cos(2 * np.pi * (X - X2))
-            return 0.5 + up / down
-
-        A = np.array([0, 1])
-
-    if (kernel.__class__.__name__ == 'PolynomialBasisFinite'):
-        def kernel_function(X, X2):
-            n = 8
-            upper = (1 - np.power((kernel.weight * X * X2), n + 1))
-            lower = 1 - kernel.weight * X * X2
-            return upper / lower
-
-        A = np.array([-1, 1])
+    kernel_function = get_kernel_function(kernel=kernel)
+    A = get_integration_area(kernel=kernel)
 
     #Generating existing Vectors and Matrices
     u_front_variance = sp.integrate.dblquad(kernel_function, A[0], A[1], A[0], A[1])[0]
@@ -167,40 +184,3 @@ def Optimal_Quadrature_Nodes_Extend(kernel: GPy.kern, NoN_ex: int, NoN_add: int,
         return opt.x, variance
     else:
         return opt.x
-
-def get_weights(kernel: GPy.kern, X: np.ndarray):
-
-    if (kernel.__class__.__name__ == 'PolynomialBasis'):
-        def kernel_function(X, X2):
-            return 1 / (1 - kernel.weight * X * X2)
-        A = np.array([-1, 1])
-
-    if (kernel.__class__.__name__ == 'Trigonometric'):
-        def kernel_function(X, X2):
-            up = 0.5 * (1 - np.square(kernel.weight))
-            down = 1 + np.square(kernel.weight) - 2 * kernel.weight * np.cos(2 * np.pi * (X - X2))
-            return 0.5 + up / down
-        A = np.array([0, 1])
-
-    if (kernel.__class__.__name__ == 'PolynomialBasisFinite'):
-        def kernel_function(X, X2):
-            n = 8
-            upper = (1 - np.power((kernel.weight * X * X2), n + 1))
-            lower = 1 - kernel.weight * X * X2
-            return upper / lower
-        A = np.array([-1, 1])
-
-    n = len(X)
-    u_X = np.zeros(n)
-    K = np.identity(n)
-
-    for i in range(0, n):
-        u_X[i] = sp.integrate.quad(kernel_function, A[0], A[1], X[i])[0]
-        for j in range(0, n):
-            K[i, j] = kernel_function(X[i], X[j])
-            K[j, i] = kernel_function(X[j], X[i])
-
-    K_inverse = np.linalg.pinv(K)
-    weights = np.matmul(K_inverse, u_X)
-
-    return weights
