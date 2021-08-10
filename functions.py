@@ -230,3 +230,23 @@ def GPQ(f, kernel: GPy.kern, A: np.ndarray, NoN: int, return_var: bool):
         return I, var
     else:
         return I
+
+def trapez(f, A: np.ndarray, NoN: int):
+
+    h = (A[1] - A[0]) / (NoN - 1)
+    X = np.linspace(A[0], A[1], NoN)
+    Y = f(X)
+    W = np.array([0.5, 0.5])
+    for i in range(2, NoN):
+        W = np.insert(W, 1, 1)
+
+    return h * np.dot(W, Y)
+
+def GLQ(f, A: np.ndarray, NoN: int):
+
+    nodes, weight = np.polynomial.legendre.leggauss(NoN)
+    X = integral_transformation(A=np.array([-1, 1]), B=A, X=nodes)
+    Y = f(X)
+    h = (A[1] - A[0]) / 2
+
+    return h * np.dot(weight, Y)
