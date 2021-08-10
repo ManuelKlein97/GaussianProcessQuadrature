@@ -210,7 +210,7 @@ def GPQ(f, kernel: GPy.kern, A: np.ndarray, NoN: int, return_var: bool):
     :return:
     '''
 
-    index = int(100 * kernel.weight)
+    index = int(100 * kernel.weight - 1)
     kernel_function = get_kernel_function(kernel=kernel)
     A_std = get_integration_area(kernel=kernel)
     filename = kernel.__class__.__name__ + ', ' + '{}'.format(NoN) + ', ' + '{}'.format(0.01) + '.txt'
