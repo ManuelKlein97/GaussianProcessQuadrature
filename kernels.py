@@ -3,7 +3,6 @@ import numpy as np
 from GPy.kern.src.kern import Kern
 from GPy.core import Param
 
-
 class PolynomialBasis(Kern):
 
     def __init__(self, input_dim, weight=0.5, active_dims=None):
